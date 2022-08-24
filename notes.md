@@ -18,6 +18,8 @@ produces an error message on the last line like: Cannot cast 'c_p' to a 'non-typ
 
 This is because the type of `some_field` is unconstrained which makes the cast illegal. However, that was not obvious from the error message. I think a better message would be something like: "cannot cast to Class "Child" because one or more of its fields is generic; please provide explicit type definitions."
 
+Opened an issue about this here: https://github.com/chapel-lang/chapel/issues/20502
+
 **Passing a shared SubClass to a shared SuperClass argument**
 ---
 
