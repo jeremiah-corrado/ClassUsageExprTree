@@ -2,6 +2,7 @@ module main {
     use IO;
     use Map;
     use Reflection;
+    use Memory.Diagnostics;
 
     // ----------------------------------
     /* Class Hierarchy:
@@ -23,14 +24,6 @@ module main {
     class UnaryExp : BaseExp { }
     class VarExp: UnaryExp { var symbol: string; }
     class IntExp: UnaryExp { var value: int; }
-
-    proc BinaryExp.writeThis(ch:channel) throws { ch.write("(", this.left, ", ", this.right, ")"); }
-    override proc AddExp.writeThis(ch: channel) throws { ch.write("Add "); super.writeThis(ch); }
-    override proc SubExp.writeThis(ch: channel) throws { ch.write("Sub "); super.writeThis(ch); }
-    override proc MulExp.writeThis(ch: channel) throws { ch.write("Mul "); super.writeThis(ch); }
-
-    proc VarExp.writeThis(ch: channel) throws { ch.write("'", this.symbol, "'"); }
-    proc IntExp.writeThis(ch: channel) throws { ch.write(this.value); }
 
     // ----------------------------------
     // Tree Evaluation Function
@@ -130,6 +123,8 @@ module main {
         generic_exp_error();
         all_ops_test();
         to_string_test();
+
+        printMemAllocs();
     }
 
     proc basic_test() {
