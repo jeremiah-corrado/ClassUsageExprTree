@@ -15,7 +15,7 @@ module main {
 
     class BaseExp { }
 
-    class BinaryExp : BaseExp { var left, right : owned BaseExp; }
+    class BinaryExp : BaseExp { var left, right : owned BaseExp?; }
     class AddExp : BinaryExp { }
     class SubExp : BinaryExp { }
     class MulExp : BinaryExp { }
@@ -46,11 +46,11 @@ module main {
             const h_mul = h_bin:MulExp?;
 
             if h_add != nil {
-                return eval(h_add!.left, env) + eval(h_add!.right, env);
+                return eval(h_add!.left!, env) + eval(h_add!.right!, env);
             } else if h_sub != nil {
-                return eval(h_sub!.left, env) - eval(h_sub!.right, env);
+                return eval(h_sub!.left!, env) - eval(h_sub!.right!, env);
             } else if h_mul != nil {
-                return eval(h_mul!.left, env) * eval(h_mul!.right, env);
+                return eval(h_mul!.left!, env) * eval(h_mul!.right!, env);
             } else {
                 throw new NonConcreteExpError();
             }
@@ -88,13 +88,13 @@ module main {
             const h_mul = h_bin:MulExp?;
 
             if h_add != nil {
-                return "(" + exprToString(h_add!.left) + " + " + exprToString(h_add!.right) + ")";
+                return "(" + exprToString(h_add!.left!) + " + " + exprToString(h_add!.right!) + ")";
             } else if h_sub != nil {
-                return "(" + exprToString(h_sub!.left) + " - " +  exprToString(h_sub!.right) + ")";
+                return "(" + exprToString(h_sub!.left!) + " - " +  exprToString(h_sub!.right!) + ")";
             } else if h_mul != nil {
-                return exprToString(h_mul!.left) + " * " +  exprToString(h_mul!.right);
+                return exprToString(h_mul!.left!) + " * " +  exprToString(h_mul!.right!);
             } else {
-                return exprToString(h_bin!.left) + " ? " + exprToString(h_bin!.right);
+                return "(" + exprToString(h_bin!.left!) + " ? " + exprToString(h_bin!.right!) + ")";
             }
         } else if h_una != nil {
             const h_int = h_una:IntExp?;
@@ -122,6 +122,9 @@ module main {
         generic_exp_error();
         all_ops_test();
         to_string_test();
+
+        dynamic_construction_test(1);
+        dynamic_construction_test(10);
 
         printMemAllocs();
     }
@@ -233,5 +236,35 @@ module main {
         const exp_string = exprToString(exp);
         const msg = if exp_string == "((x + 1) * y + (z - 5))" then "Passed!" else "Failed!";
         writeln("'", getRoutineName(), "': ", msg);
+    }
+
+    proc dynamic_construction_test(n: uint) {
+        const exp : owned BaseExp = addition_tree(n);
+        try! {
+            const sum = eval(exp, new map(string, int));
+            const msg = if sum == 2**n then "Passed!" else "Failed!";
+            writeln("'", getRoutineName(), "': ", msg);
+        }
+    }
+
+    proc addition_tree(cnt: uint) : owned BaseExp {
+        if cnt == 0 {
+            return new owned IntExp(1);
+        } else {
+            var c1 : owned BaseExp = addition_tree(cnt - 1);
+            var c2 : owned BaseExp = addition_tree(cnt - 1);
+            return new owned AddExp(c1, c2);
+        }
+    }
+
+    proc empty_binary_tree(cnt: int) : owned BaseExp {
+        if cnt >= 0 {
+            var n = new owned BinaryExp();
+            n.left = empty_binary_tree(cnt - 1):(BaseExp)?;
+            n.right = empty_binary_tree(cnt - 1):(BaseExp)?;
+            return n;
+        } else {
+            return new owned UnaryExp();
+        }
     }
 }

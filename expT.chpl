@@ -15,7 +15,7 @@ module main {
 
     class BaseExp { }
 
-    class BinaryExp : BaseExp { var left, right : shared BaseExp; }
+    class BinaryExp : BaseExp { var left, right : shared BaseExp?; }
     class AddExp : BinaryExp { }
     class SubExp : BinaryExp { }
     class MulExp : BinaryExp { }
@@ -36,7 +36,7 @@ module main {
         proc init() { }
     }
 
-    proc eval(head: shared BaseExp, const ref env: map(string, int)): int throws {
+    proc eval(head: borrowed BaseExp, const ref env: map(string, int)): int throws {
         const h_bin = head:BinaryExp?;
         const h_una = head:UnaryExp?;
 
@@ -46,11 +46,11 @@ module main {
             const h_mul = h_bin:MulExp?;
 
             if h_add != nil {
-                return eval(h_add!.left, env) + eval(h_add!.right, env);
+                return eval(h_add!.left!, env) + eval(h_add!.right!, env);
             } else if h_sub != nil {
-                return eval(h_sub!.left, env) - eval(h_sub!.right, env);
+                return eval(h_sub!.left!, env) - eval(h_sub!.right!, env);
             } else if h_mul != nil {
-                return eval(h_mul!.left, env) * eval(h_mul!.right, env);
+                return eval(h_mul!.left!, env) * eval(h_mul!.right!, env);
             } else {
                 throw new NonConcreteExpError();
             }
@@ -78,7 +78,7 @@ module main {
     // Expression Printing Function
     // ----------------------------------
 
-    proc exprToString(head: shared BaseExp): string {
+    proc exprToString(head: borrowed BaseExp): string {
         const h_bin = head:BinaryExp?;
         const h_una = head:UnaryExp?;
 
@@ -88,13 +88,13 @@ module main {
             const h_mul = h_bin:MulExp?;
 
             if h_add != nil {
-                return "(" + exprToString(h_add!.left) + " + " + exprToString(h_add!.right) + ")";
+                return "(" + exprToString(h_add!.left!) + " + " + exprToString(h_add!.right!) + ")";
             } else if h_sub != nil {
-                return "(" + exprToString(h_sub!.left) + " - " +  exprToString(h_sub!.right) + ")";
+                return "(" + exprToString(h_sub!.left!) + " - " +  exprToString(h_sub!.right!) + ")";
             } else if h_mul != nil {
-                return exprToString(h_mul!.left) + " * " +  exprToString(h_mul!.right);
+                return exprToString(h_mul!.left!) + " * " +  exprToString(h_mul!.right!);
             } else {
-                return exprToString(h_bin!.left) + " ? " + exprToString(h_bin!.right);
+                return "(" + exprToString(h_bin!.left!) + " ? " + exprToString(h_bin!.right!) + ")";
             }
         } else if h_una != nil {
             const h_int = h_una:IntExp?;
@@ -122,6 +122,7 @@ module main {
         generic_exp_error();
         all_ops_test();
         to_string_test();
+        dynamic_construction_test();
 
         printMemAllocs();
     }
@@ -136,7 +137,7 @@ module main {
 
         // evaluate expression
         try! {
-            const result = eval(exp, env);
+            const result = eval(exp:(shared BaseExp), env);
             const msg = if result == 45 then "Passed!" else "Failed!";
             writeln("'", getRoutineName(), "': ", msg);
         }
@@ -233,5 +234,34 @@ module main {
         const exp_string = exprToString(exp:(shared BaseExp));
         const msg = if exp_string == "((x + 1) * y + (z - 5))" then "Passed!" else "Failed!";
         writeln("'", getRoutineName(), "': ", msg);
+    }
+
+    proc dynamic_construction_test() {
+        // var exp = rec_dc_helper(4);
+        // writeln(exprToString(exp:(shared BaseExp)));
+
+        var empty_tree = empty_binary_tree(4);
+        writeln(exprToString(empty_tree));
+    }
+
+    // proc rec_dc_helper(cnt: int) : BaseExp {
+    //     if cnt == 0 {
+    //         return new shared IntExp(1);
+    //     } else {
+    //         const c1 : shared BaseExp = rec_dc_helper(cnt - 1);
+    //         const c2 : shared BaseExp = rec_dc_helper(cnt - 1);
+    //         return new shared AddExp(c1, c2);
+    //     }
+    // }
+
+    proc empty_binary_tree(cnt: int) : shared BaseExp {
+        if cnt >= 0 {
+            var n = new shared BinaryExp();
+            n.left = empty_binary_tree(cnt - 1):(BaseExp)?;
+            n.right = empty_binary_tree(cnt - 1):(BaseExp)?;
+            return n;
+        } else {
+            return new shared UnaryExp();
+        }
     }
 }
