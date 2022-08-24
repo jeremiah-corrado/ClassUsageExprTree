@@ -80,15 +80,56 @@ module main {
         } else {
             throw new NonConcreteExpError();
         }
-
-        return 0;
     }
+
+    // ----------------------------------
+    // Expression Printing Function
+    // ----------------------------------
+
+    proc exprToString(head: borrowed BaseExp): string {
+        const h_bin = head:(borrowed BinaryExp?);
+        const h_una = head:(borrowed UnaryExp?);
+
+         if h_bin != nil {
+            const h_add = h_bin:(borrowed AddExp?);
+            const h_sub = h_bin:(borrowed SubExp?);
+            const h_mul = h_bin:(borrowed MulExp?);
+
+            if h_add != nil {
+                return "(" + exprToString(h_add!.left) + " + " + exprToString(h_add!.right) + ")";
+            } else if h_sub != nil {
+                return "(" + exprToString(h_sub!.left) + " - " +  exprToString(h_sub!.right) + ")";
+            } else if h_mul != nil {
+                return exprToString(h_mul!.left) + " * " +  exprToString(h_mul!.right);
+            } else {
+                return exprToString(h_bin!.left) + " ? " + exprToString(h_bin!.right);
+            }
+        } else if h_una != nil {
+            const h_int = h_una:(borrowed IntExp?);
+            const h_var = h_una:(borrowed VarExp?);
+
+            if h_int != nil {
+                return h_int!.value:string;
+            } else if h_var != nil {
+                return h_var!.symbol;
+            } else {
+                return "_";
+            }
+        } else {
+            return "{ }";
+        }
+    }
+
+    // ----------------------------------
+    // Testing
+    // ----------------------------------
 
     proc main() {
         basic_test();
         missing_env_error();
         generic_exp_error();
         all_ops_test();
+        to_string_test();
     }
 
     proc basic_test() {
@@ -177,5 +218,26 @@ module main {
             const msg = if r1 == 2 && r2 == 1006 then "Passed!" else "Failed!";
             writeln("'", getRoutineName(), "': ", msg);
         }
+    }
+
+     proc to_string_test() {
+        // setup larger tree ((x + 1) * y) + (z - 5)
+        const exp = new AddExp(
+            new shared MulExp(
+                new shared AddExp(
+                    new shared VarExp("x"),
+                    new shared IntExp(1)
+                ),
+                new shared VarExp("y")
+            ),
+            new shared SubExp(
+                new shared VarExp("z"),
+                new shared IntExp(5)
+            )
+        );
+
+        const exp_string = exprToString(exp);
+        const msg = if exp_string == "((x + 1) * y + (z - 5))" then "Passed!" else "Failed!";
+        writeln("'", getRoutineName(), "': ", msg);
     }
 }
