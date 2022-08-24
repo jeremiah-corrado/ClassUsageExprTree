@@ -15,7 +15,7 @@ module main {
 
     class BaseExp { }
 
-    class BinaryExp : BaseExp { var left, right : shared BaseExp; }
+    class BinaryExp : BaseExp { var left, right : owned BaseExp; }
     class AddExp : BinaryExp { }
     class SubExp : BinaryExp { }
     class MulExp : BinaryExp { }
@@ -36,7 +36,7 @@ module main {
         proc init() { }
     }
 
-    proc eval(head: shared BaseExp, const ref env: map(string, int)): int throws {
+    proc eval(head: borrowed BaseExp, const ref env: map(string, int)): int throws {
         const h_bin = head:BinaryExp?;
         const h_una = head:UnaryExp?;
 
@@ -78,7 +78,7 @@ module main {
     // Expression Printing Function
     // ----------------------------------
 
-    proc exprToString(head: shared BaseExp): string {
+    proc exprToString(head: borrowed BaseExp): string {
         const h_bin = head:BinaryExp?;
         const h_una = head:UnaryExp?;
 
@@ -128,7 +128,7 @@ module main {
 
     proc basic_test() {
         // build tree
-        const exp = new shared AddExp(new shared VarExp("x"), new shared IntExp(42));
+        const exp = new AddExp(new VarExp("x"), new IntExp(42));
 
         // setup environment
         var env = new map(string, int);
@@ -144,14 +144,14 @@ module main {
 
     proc missing_env_error() {
         // build tree
-        const exp = new shared AddExp(new shared VarExp("x"), new shared IntExp(42));
+        const exp = new AddExp(new VarExp("x"), new IntExp(42));
 
         // setup environment with missing "x"
         var env = new map(string, int);
 
         // look for correct error type
         try {
-            const result = eval(exp:(shared BaseExp), env);
+            const result = eval(exp, env);
         } catch e: MissingEnvironmentError {
             writeln("'", getRoutineName(), "': Passed!");
         } catch {
@@ -161,7 +161,7 @@ module main {
 
     proc generic_exp_error() {
         // build tree with a direct UnaryExp
-        const exp = new shared AddExp(new shared VarExp("x"), new shared UnaryExp());
+        const exp = new AddExp(new VarExp("x"), new UnaryExp());
 
         // setup environment
         var env = new map(string, int);
@@ -169,7 +169,7 @@ module main {
 
         // look for correct error type
         try {
-            const result = eval(exp:(shared BaseExp), env);
+            const result = eval(exp, env);
         } catch e: NonConcreteExpError {
             writeln("'", getRoutineName(), "': Passed!");
         } catch {
@@ -179,17 +179,17 @@ module main {
 
     proc all_ops_test() {
         // setup larger tree ((1 + x) * y) + (z - 5)
-        const exp = new shared AddExp(
-            new shared MulExp(
-                new shared AddExp(
-                    new shared VarExp("x"),
-                    new shared IntExp(1)
+        const exp = new AddExp(
+            new MulExp(
+                new AddExp(
+                    new VarExp("x"),
+                    new IntExp(1)
                 ),
-                new shared VarExp("y")
+                new VarExp("y")
             ),
-            new shared SubExp(
-                new shared VarExp("z"),
-                new shared IntExp(5)
+            new SubExp(
+                new VarExp("z"),
+                new IntExp(5)
             )
         );
 
@@ -206,8 +206,8 @@ module main {
 
         // check that the expression evaluates correctly for both of them
         try! {
-            const r1 = eval(exp:(shared BaseExp), env_1);
-            const r2 = eval(exp:(shared BaseExp), env_2);
+            const r1 = eval(exp, env_1);
+            const r2 = eval(exp, env_2);
 
             const msg = if r1 == 2 && r2 == 1006 then "Passed!" else "Failed!";
             writeln("'", getRoutineName(), "': ", msg);
@@ -216,21 +216,21 @@ module main {
 
      proc to_string_test() {
         // setup larger tree ((x + 1) * y) + (z - 5)
-        const exp = new shared AddExp(
-            new shared MulExp(
-                new shared AddExp(
-                    new shared VarExp("x"),
-                    new shared IntExp(1)
+        const exp = new AddExp(
+            new MulExp(
+                new AddExp(
+                    new VarExp("x"),
+                    new IntExp(1)
                 ),
-                new shared VarExp("y")
+                new VarExp("y")
             ),
-            new shared SubExp(
-                new shared VarExp("z"),
-                new shared IntExp(5)
+            new SubExp(
+                new VarExp("z"),
+                new IntExp(5)
             )
         );
 
-        const exp_string = exprToString(exp:(shared BaseExp));
+        const exp_string = exprToString(exp);
         const msg = if exp_string == "((x + 1) * y + (z - 5))" then "Passed!" else "Failed!";
         writeln("'", getRoutineName(), "': ", msg);
     }
