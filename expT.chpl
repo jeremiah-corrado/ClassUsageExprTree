@@ -35,7 +35,16 @@ module main {
     // ----------------------------------
     // Tree Evaluation Function
     // ----------------------------------
-    proc eval(head: borrowed BaseExp, const ref env: map(string, int)): int {
+
+    class NonConcreteExpError: Error {
+        proc init() { }
+    }
+
+    class MissingEnvironmentError: Error {
+        proc init() { }
+    }
+
+    proc eval(head: borrowed BaseExp, const ref env: map(string, int)): int throws {
         const h_bin = head:(borrowed BinaryExp?);
         const h_una = head:(borrowed UnaryExp?);
 
@@ -51,23 +60,25 @@ module main {
             } else if h_mul != nil {
                 return eval(h_mul!.left, env) * eval(h_mul!.right, env);
             } else {
-                writeln("Cannot apply non-concrete operator!");
-                halt(1);
+                throw new NonConcreteExpError();
             }
         } else if h_una != nil {
             const h_int = h_una:(borrowed IntExp?);
             const h_var = h_una:(borrowed VarExp?);
+
             if h_int != nil {
                 return h_int!.value;
             } else if h_var != nil {
-                return env[h_var!.symbol];
+                if env.contains(h_var!.symbol) {
+                    return env[h_var!.symbol];
+                } else {
+                    throw new MissingEnvironmentError();
+                }
             } else {
-                writeln("Cannot evaluate non-concrete Unary Expression!");
-                halt(1);
+                throw new NonConcreteExpError();
             }
         } else {
-            writeln("Cannot Evaluate non-concrete expressions!");
-            halt(1);
+            throw new NonConcreteExpError();
         }
 
         return 0;
@@ -75,19 +86,96 @@ module main {
 
     proc main() {
         basic_test();
+        missing_env_error();
+        generic_exp_error();
+        all_ops_test();
     }
 
     proc basic_test() {
         // build tree
-        const exp : shared AddExp = new shared AddExp(new shared VarExp("x"), new shared IntExp(42));
+        const exp = new AddExp(new shared VarExp("x"), new shared IntExp(42));
 
         // setup environment
         var env = new map(string, int);
         env.add("x", 3);
 
-        // evaluate tree
-        const result = eval(exp, env);
-        const msg = if result == 45 then "Passed!" else "Failed!";
-        writeln("'", getRoutineName(), "': ", msg);
+        // evaluate expression
+        try! {
+            const result = eval(exp, env);
+            const msg = if result == 45 then "Passed!" else "Failed!";
+            writeln("'", getRoutineName(), "': ", msg);
+        }
+    }
+
+    proc missing_env_error() {
+        // build tree
+        const exp : shared AddExp = new shared AddExp(new shared VarExp("x"), new shared IntExp(42));
+
+        // setup environment with missing "x"
+        var env = new map(string, int);
+
+        // look for correct error type
+        try {
+            const result = eval(exp, env);
+        } catch e: MissingEnvironmentError {
+            writeln("'", getRoutineName(), "': Passed!");
+        } catch {
+            writeln("'", getRoutineName(), "': Failed!");
+        }
+    }
+
+    proc generic_exp_error() {
+        // build tree with a direct UnaryExp
+        const exp : shared AddExp = new shared AddExp(new shared VarExp("x"), new shared UnaryExp());
+
+        // setup environment
+        var env = new map(string, int);
+        env.add("x", 3);
+
+        // look for correct error type
+        try {
+            const result = eval(exp, env);
+        } catch e: NonConcreteExpError {
+            writeln("'", getRoutineName(), "': Passed!");
+        } catch {
+            writeln("'", getRoutineName(), "': Failed!");
+        }
+    }
+
+    proc all_ops_test() {
+        // setup larger tree ((1 + x) * y) + (z - 5)
+        const exp = new AddExp(
+            new shared MulExp(
+                new shared AddExp(
+                    new shared VarExp("x"),
+                    new shared IntExp(1)
+                ),
+                new shared VarExp("y")
+            ),
+            new shared SubExp(
+                new shared VarExp("z"),
+                new shared IntExp(5)
+            )
+        );
+
+        // setup two environments
+        var env_1 = new map(string, int);
+        env_1.add("x", 1);
+        env_1.add("y", 2);
+        env_1.add("z", 3);
+
+        var env_2 = new map(string, int);
+        env_2.add("x", 100);
+        env_2.add("y", 10);
+        env_2.add("z", 1);
+
+        // check that the expression evaluates correctly for both of them
+        try! {
+            const r1 = eval(exp, env_1);
+            const r2 = eval(exp, env_2);
+
+            const msg = if r1 == 2 && r2 == 1006 then "Passed!" else "Failed!";
+            writeln("'", getRoutineName(), "': ", msg);
+        }
     }
 }
